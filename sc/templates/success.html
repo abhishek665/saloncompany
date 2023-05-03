@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %} {% endblock %}
+
+{% load static %}
+
+{% block head %} 
+<style>
+    .input-group-field{
+    width: 5vw;
+  }
+  .input-group-button{
+    font-size: 8px;
+    text-align: center;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+  .hollow{
+    background-color: transparent;
+    color: white;
+  }
+  #otp{
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<h1> Your Order Has Been Placed Successfully {{data}} </h1>
+
+<script> 
+localStorage.clear();
+</script>
+
+{% endblock %}

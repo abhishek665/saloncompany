@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+
+{% block title %} {% endblock %}
+
+{% load static %}
+
+{% block head %} 
+<style>
+    .input-group-field{
+    width: 5vw;
+  }
+  .input-group-button{
+    font-size: 8px;
+    text-align: center;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+  .hollow{
+    background-color: transparent;
+    color: white;
+  }
+  #otp{
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+
+<div class="container-fluid" style="padding: 0;">
+
+    <table class="table table-dark">
+        <thead>
+          <tr>
+            <th class="col-3" scope="col">Name</th>
+            <th scope="col">Price</th>
+            <th scope="col">Qty</th>
+            <th class="col-1" scope="col">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+            {% for i in data %}
+          <tr id="r{{i.uid}}">
+            <th style="display: none;" scope="row">{{i.uid}}</th>
+            <td>{{i.name}}</td>
+            <td id="price{{i.uid}}">{{i.price}}</td>
+            <td class="row" id="c{{i.uid}}">
+                <button class="btn btn-success" onclick="changebtn(this);" id="{{i.uid}}">Add</button>
+            </td>
+            <td id="p_total{{i.uid}}">{{i.total}}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <button onclick="final_checkout(this);" class="btn">Checkout</button>
+
+</div>
+
+<form id="checkout_form2" action="/success/" enctype="multipart/form-data" method="post">
+    {% csrf_token %}
+    <input name="form_cart" id="form_cart2" type="hidden" value=""/>
+  </form>
+
+  <div class="modal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Login First</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+                <div class="mb-3" id="email">
+                  <label for="exampleInputEmail1" class="form-label">Email address</label>
+                  <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+                  <div id="emailHelp" class="form-text">We'll never share your email with anyone else.</div>
+                </div>
+                <div class="mb-3" id="otp">
+                  <label for="exampleInputPassword1" class="form-label">OTP</label>
+                  <input type="tel" class="form-control" id="exampleInputPassword1">
+                </div>
+                <button id="send_btn" onclick="send_otp(this);" type="button" class="btn btn-primary">Send OTP</button>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="hide_modal(this);" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <!-- <button type="button" class="btn btn-primary">Save changes</button> -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function hide_modal (e){
+        $('.modal').hide();
+    }
+    function send_otp(e) { 
+        email = $('#exampleInputEmail1').val();
+        var csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        $.ajax({
+            url: '/send_otp/',
+            type: 'POST',
+            data: {email: email},
+            headers: {'X-CSRFToken': csrftoken},
+            success: function(data){
+                console.log(data);
+                document.getElementById('email').style = 'display:none';
+                document.getElementById('otp').style = 'display:block';
+                document.getElementById('send_btn').setAttribute('onclick', 'verify_otp(this);');
+                document.getElementById('send_btn').innerText = 'Verify';
+                
+
+            }
+        })
+    }
+    function verify_otp (e){
+        $('#checkout_form2').submit();
+    }
+    function final_checkout(e){
+      cart = JSON.parse(localStorage.getItem('cart'));
+      document.getElementById('form_cart2').value = localStorage.getItem('cart');
+      var csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      $.ajax({
+        url: '/my_orders/',
+        type: 'POST',
+        data: {csrfmoddlewaretoken: '{{csrf_token}}'},
+        headers: {'X-CSRFToken': csrftoken},
+        success: function(data){
+            data = JSON.parse(data);
+            console.log(data);
+            if (data === true){
+                $('#checkout_form2').submit();
+            }
+            else {
+                $('.modal').show();
+            }
+        }
+      })
+
+    }
+  </script>
+
+<script>
+    function plus(e){
+        eid = (e.id).slice(1)
+        var currentVal = parseInt($('#q'+eid).val());
+        // If is not undefined
+        if (!isNaN(currentVal)) {
+            // Increment
+            $('#q'+eid).val(currentVal + 1);
+            price = document.getElementById('price'+eid).innerText;
+            console.log(price)
+            total = document.getElementById('p_total'+eid)
+            total.innerText = parseInt(total.innerText) + parseInt(price);
+        } else {
+            // Otherwise put a 0 there
+            $('#q'+eid).val(0);
+        }
+        document.getElementById('cart').innerHTML = parseInt(document.getElementById('cart').innerText) + 1;
+        cart = JSON.parse(localStorage.getItem('cart'));
+        console.log(cart[eid]);
+        if (cart[eid]){
+            cart[eid]['qty'] += 1;
+            console.log('present', cart[eid]['qty']);
+        }
+        else {
+            console.log('Not present')
+            cart[eid] += {eid: eid, qty: 1};
+
+        }
+        localStorage.setItem('cart', JSON.stringify(cart));
+        console.log(cart, localStorage.getItem('cart'));
+    }
+    function minus (e){
+        eid = (e.id).slice(1)
+        // Get its current value
+        var currentVal = parseInt($('#q'+eid).val());
+        // If it isn't undefined or its greater than 0
+        if (currentVal - 1 == 0){
+            document.getElementById('c'+eid).innerHTML = '<button class="btn" onclick="changebtn(this)" id="' + eid + '">Add</button>';
+            document.getElementById('r'+eid).remove();
+            currentVal = 0;
+        }
+        if (!isNaN(currentVal) && currentVal > 0) {
+            // Decrement one
+            $('#q'+eid).val(currentVal - 1);
+            price = document.getElementById('price'+eid).innerText;
+            console.log(price)
+            total = document.getElementById('p_total'+eid)
+            total.innerText = parseInt(total.innerText) - parseInt(price);
+        }
+        document.getElementById('cart').innerHTML = parseInt(document.getElementById('cart').innerText) - 1;
+        cart = JSON.parse(localStorage.getItem('cart'));
+        console.log(cart);
+        if (cart[eid]){
+            if (cart[eid]['qty'] - 1 == 0){
+                delete cart[eid]
+            }
+            else {
+                cart[eid]['qty'] -= 1;
+                console.log('present', cart[eid]['qty']);
+            }
+        }
+        localStorage.setItem('cart', JSON.stringify(cart));
+        console.log(cart, localStorage.getItem('cart'));
+    }
+    function changebtn(btn){
+        console.log(btn);
+        btn_id = btn.id;
+        document.getElementById('c'+btn.id).innerHTML = '<div class="input-group-button">\
+                          <button id="m' + btn.id + '" type="button" onclick="minus(this);" class="button hollow circle" data-quantity="minus" data-field="quantity">\
+                            <i class="fa fa-minus" aria-hidden="true"></i>\
+                          </button>\
+                        </div>\
+                        <input id="q'+btn_id+'" class="input-group-field" type="number" name="quantity" value="1">\
+                        <div class="input-group-button">\
+                          <button id="p' + btn.id + '" type="button" onclick="plus(this);" class="button hollow circle" data-quantity="plus" data-field="quantity">\
+                            <i class="fa fa-plus" aria-hidden="true"></i>\
+                          </button>\
+                        </div>';
+        document.getElementById('cart').innerHTML = parseInt(document.getElementById('cart').innerText) + 1;
+        cart = JSON.parse(localStorage.getItem('cart'))
+        if (!cart){
+            cart = {}
+            cart[btn_id] = {eid: btn_id, qty: 1}
+        } else {
+            cart[btn_id] = {eid: btn_id, qty: 1}
+        }
+        localStorage.setItem('cart', JSON.stringify(cart));                
+    }
+    cart = JSON.parse(localStorage.getItem('cart'));
+    cart_length = Object.keys(cart).length
+    console.log('reload')
+    if (cart_length > 0){
+        qty = 0
+        console.log(cart)
+        for (let i in cart){
+            qty = qty + cart[i]['qty']
+            console.log(cart[i]['qty'])
+            btn = document.getElementById('c' + i).innerHTML = '<div class="input-group-button">\
+                          <button id="m' + i + '" type="button" onclick="minus(this);" class="button hollow circle" data-quantity="minus" data-field="quantity">\
+                            <i class="fa fa-minus" aria-hidden="true"></i>\
+                          </button>\
+                        </div>\
+                        <input id="q'+i+'" class="input-group-field" type="number" name="quantity" value="' + cart[i]['qty'] + '">\
+                        <div class="input-group-button">\
+                          <button id="p' + i + '" type="button" onclick="plus(this);" class="button hollow circle" data-quantity="plus" data-field="quantity">\
+                            <i class="fa fa-plus" aria-hidden="true"></i>\
+                          </button>\
+                        </div>';
+        }9
+        document.getElementById('cart').innerText = qty;
+    }
+    jQuery(document).ready(function(){
+    // This button will increment the value
+    // This button will decrement the value till 0
+    cart = JSON.parse(localStorage.getItem('cart'));
+    for (let i in cart){
+        console.log(i);
+        qty = cart[i]['qty']
+        price = parseInt($('#price'+i).text());
+        total = qty * price;
+        console.log(qty, price, total);
+        document.getElementById('p_total'+i).innerText = total;
+    }
+    });
+  </script>
+
+{% endblock %}
