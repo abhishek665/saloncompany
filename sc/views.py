@@ -91,6 +91,3 @@ def success(request):
 
     except:
         return HttpResponse('Invalid Request')
-
-
-def login(request):
